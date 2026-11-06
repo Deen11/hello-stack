@@ -1,26 +1,33 @@
+# Project settings: what this package is, what it depends on, and how its tools behave.
+# You state the rough version ranges here. uv.lock records the exact versions installed.
+
 [project]
 name = "hello-stack"
 version = "0.1.0"
 description = "A skeleton FastAPI and Postgres/pgvector service that runs with one command."
 readme = "README.md"
 requires-python = ">=3.12"
+# Needed to run the app, so these go into the Docker image.
 dependencies = [
-    "fastapi>=0.115",
-    "psycopg[binary]>=3.2",
-    "uvicorn>=0.32",
+    "fastapi>=0.115",      # Web framework that defines the endpoints.
+    "psycopg[binary]>=3.2", # Postgres driver. [binary] includes the compiled parts.
+    "uvicorn>=0.32",       # Web server that actually runs the FastAPI app.
 ]
 
+# Needed only while developing, so "uv sync --no-dev" leaves these out of the image.
 [dependency-groups]
 dev = [
-    "httpx2>=2.16.0",
-    "pytest>=8.3",
-    "ruff>=0.8",
+    "httpx2>=2.16.0", # HTTP library that FastAPI's TestClient uses.
+    "pytest>=8.3",    # Test runner.
+    "ruff>=0.8",      # Linter and formatter.
 ]
 
+# How to turn the source code into an installable package.
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+# Our code lives in src/hello_stack, so tell the build tool where to find it.
 [tool.hatch.build.targets.wheel]
 packages = ["src/hello_stack"]
 
@@ -31,4 +38,5 @@ testpaths = ["tests"]
 line-length = 100
 
 [tool.ruff.lint]
+# Rule sets: E/F common errors, I import order, UP modern Python syntax, B likely bugs.
 select = ["E", "F", "I", "UP", "B"]

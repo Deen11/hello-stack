@@ -1,26 +1,48 @@
+# Defines the whole stack, so "docker compose up --build" starts both containers together.
+#
+# ${NAME:-default} means: use NAME from your .env file if it's set, otherwise use the default.
+# That's why the stack runs with no setup at all.
+
 services:
+  # The database container.
   db:
+    # Official Postgres 17 image with pgvector already included.
     image: pgvector/pgvector:pg17
     environment:
+      # Postgres creates this user and database the first time it starts.
       POSTGRES_USER: ${POSTGRES_USER:-hello}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hello-local-only}
       POSTGRES_DB: ${POSTGRES_DB:-hello}
+    # There is deliberately no "ports" section here. The database can only be reached
+    # by other containers in this stack, not from your machine or your network.
     volumes:
+      # Named volume: data survives restarts, and is only deleted by "down --volumes".
       - db-data:/var/lib/postgresql/data
+      # Postgres runs scripts from this folder when its data folder is empty.
+      # This is what enables pgvector. "ro" means read-only inside the container.
       - ./db/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
+      # pg_isready asks whether Postgres is accepting connections.
+      # "$$" passes a literal "$", so the container fills these in, not Compose.
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 3s
       timeout: 3s
       retries: 20
 
+  # The FastAPI container.
   app:
+    # Build the image from the Dockerfile in this folder.
     build: .
     environment:
+      # The host is "db" because Compose lets containers find each other by service name.
       DATABASE_URL: postgresql://${POSTGRES_USER:-hello}:${POSTGRES_PASSWORD:-hello-local-only}@db:5432/${POSTGRES_DB:-hello}
     ports:
+      # Format is your_machine:container. Binding to 127.0.0.1 means only your
+      # own computer can reach the app, not other devices on your network.
       - "127.0.0.1:${APP_PORT:-8000}:8000"
     healthcheck:
+      # Calls /health from inside the container. Python is used because the slim image
+      # has no curl. urlopen raises an error on a 503, which marks the check as failed.
       test:
         - CMD
         - python
@@ -30,8 +52,11 @@ services:
       timeout: 4s
       retries: 20
     depends_on:
+      # Don't start the app until the database passes its healthcheck.
+      # Without the condition, Compose would only wait for the container to start.
       db:
         condition: service_healthy
 
+# Declares the named volume used by the db service above.
 volumes:
   db-data:
