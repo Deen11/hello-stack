@@ -1,0 +1,37 @@
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-hello}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hello-local-only}
+      POSTGRES_DB: ${POSTGRES_DB:-hello}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  app:
+    build: .
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-hello}:${POSTGRES_PASSWORD:-hello-local-only}@db:5432/${POSTGRES_DB:-hello}
+    ports:
+      - "127.0.0.1:${APP_PORT:-8000}:8000"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"
+      interval: 3s
+      timeout: 4s
+      retries: 20
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db-data:
