@@ -31,7 +31,9 @@ Interactive API docs are at http://localhost:8000/docs.
 
 ## Architecture
 
-<!-- TODO: add a photo of your hand-drawn sketch, e.g. ![Architecture sketch](docs/architecture.jpg) -->
+![hello-stack architecture: requests reach the app on port 8000, and the app queries the database inside a private Docker Compose network](docs/architecture.svg)
+
+Only the app is published, on `localhost:8000`. The database has no published port, so only containers in the stack can reach it. Its data is kept in the `db-data` volume, and the setup script enables pgvector the first time the database starts.
 
 ## Configuration
 
